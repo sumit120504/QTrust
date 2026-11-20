@@ -49,7 +49,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#030712] text-slate-100 cyber-grid">
+    <div className="min-h-screen flex flex-col bg-[#eaf2d7] text-[#22121b] palette-grid font-sans">
       <Navbar 
         activeRole={activeRole} 
         setActiveRole={setActiveRole} 
@@ -95,16 +95,16 @@ export default function Home() {
         )}
       </main>
 
-      {/* Cyber Technical Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950/95 py-6 text-xs text-slate-500 font-mono">
+      {/* Academic Architecture Footer */}
+      <footer className="border-t border-[#efcfe3] bg-[#ffffff]/90 backdrop-blur-md py-6 text-xs text-[#5a3045] font-mono">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-400" />
-            <span className="text-slate-300 font-semibold tracking-wider">Q-TRUST ARCHITECTURE</span>
-            <span className="text-slate-600">|</span>
-            <span>NIST FIPS 204 (ML-DSA) · CIRCOM 2.1 (Groth16) · W3C VC 2.0</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#e27396]" />
+            <span className="text-[#22121b] font-bold tracking-wider">Q-TRUST ACADEMIC TRUST PROTOCOL</span>
+            <span className="text-[#efcfe3]">|</span>
+            <span className="text-[#5a3045]">NIST FIPS 204 (ML-DSA) · CIRCOM 2.1 (GROTH16) · W3C VC 2.0</span>
           </div>
-          <div className="text-slate-400">
+          <div className="text-[#e27396] font-bold">
             Final-Year B.Tech Capstone Project
           </div>
         </div>

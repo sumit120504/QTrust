@@ -3,10 +3,11 @@
 import React, { useState } from "react";
 import { CredentialClaims, CredentialEnvelope, BlockchainTransaction } from "@/types";
 import { simulatePoseidonCommitment, simulateMLDSASign } from "@/lib/cryptoSim";
-import { ISSUER_DID } from "@/lib/mockData";
+import { ISSUER_DID, CONTRACT_ADDRESSES } from "@/lib/mockData";
 import { 
   Building2, ShieldCheck, PlusCircle, AlertTriangle, CheckCircle2, 
-  Cpu, FileCheck, Layers, RefreshCw, Send, ArrowUpRight 
+  Cpu, FileCheck, Layers, RefreshCw, Send, ArrowUpRight, Lock, 
+  Database, Shield, Terminal, Hash, BookOpen
 } from "lucide-react";
 
 interface IssuerPortalProps {
@@ -127,59 +128,71 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
   };
 
   return (
-    <div className="space-y-8">
-      {/* Top Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950/60 border border-slate-800 p-6 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-2 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-mono mb-2">
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Accredited Academic Authority</span>
+    <div className="space-y-8 font-sans text-[#22121b]">
+      {/* 1. Header Banner */}
+      <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden bg-[#ffffff] border-2 border-[#e27396] shadow-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#f4f8eb] text-[#5a3045] border border-[#efcfe3] text-xs font-mono">
+              <Building2 className="w-3.5 h-3.5 text-[#e27396]" />
+              <span className="font-bold">ACCREDITED REGISTRAR AUTHORITY · SMART CONTRACT ANCHORED</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              University Issuer Management Portal
+            <h1 className="text-2xl sm:text-3xl font-black text-[#22121b] tracking-tight">
+              University Registrar Console
             </h1>
-            <p className="text-slate-400 text-sm mt-1 max-w-2xl">
+            <p className="text-[#5a3045] text-xs sm:text-sm max-w-2xl font-normal leading-relaxed">
               Issue post-quantum tamper-evident credentials. Credential commitments are anchored to the blockchain, while private student claims remain encrypted on IPFS.
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-left">
-              <span className="text-[10px] text-purple-400 font-mono uppercase block">Active Signer</span>
-              <span className="text-sm font-bold text-white flex items-center gap-1.5 font-mono">
-                <Cpu className="w-4 h-4 text-purple-400" /> ML-DSA-65
+          <div className="flex items-center space-x-3 font-mono">
+            <div className="p-4 rounded-2xl bg-[#f4f8eb] border border-[#efcfe3] text-left">
+              <span className="text-[10px] text-[#5a3045] uppercase tracking-widest block font-bold">ACTIVE SIGNER KEY</span>
+              <span className="text-sm font-black text-[#e27396] flex items-center gap-1.5 mt-0.5">
+                <Cpu className="w-4 h-4 text-[#e27396]" /> NIST ML-DSA-65 (v1)
               </span>
             </div>
           </div>
         </div>
+
+        {/* Institution Metadata Bar */}
+        <div className="mt-6 pt-4 border-t border-[#efcfe3] flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-[#5a3045]">
+          <div className="flex items-center space-x-2 truncate">
+            <span className="text-[#5a3045] font-bold">ISSUER DID:</span>
+            <span className="text-[#e27396] font-bold truncate max-w-md">{ISSUER_DID}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-[#5a3045] font-bold">CONTRACT:</span>
+            <span className="text-[#22121b] font-bold truncate max-w-[140px]">{CONTRACT_ADDRESSES.IssuerRegistry}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Grid: Issuance Form & Live Revocation Registry */}
+      {/* 2. Main Grid: Issuance Terminal & On-Chain Revocation Controller */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Form (7 cols) */}
+        {/* Left: Credential Issuance Form (7 cols) */}
         <div className="lg:col-span-7">
-          <div className="glass-panel rounded-2xl p-6 border border-slate-800 shadow-xl space-y-6">
-            <div className="flex items-center space-x-3 pb-4 border-b border-slate-800">
-              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#ffffff] border-2 border-[#efcfe3] space-y-6 shadow-sm">
+            <div className="flex items-center space-x-3 pb-4 border-b border-[#efcfe3]">
+              <div className="p-2.5 rounded-xl bg-[#f4f8eb] text-[#e27396] border border-[#efcfe3]">
                 <PlusCircle className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Issue Verifiable Degree</h2>
-                <p className="text-xs text-slate-400">Signs with NIST FIPS 204 & anchors commitment on-chain</p>
+                <h2 className="text-lg font-black text-[#22121b]">Issue Post-Quantum Credential</h2>
+                <p className="text-xs text-[#5a3045] font-mono font-bold">Generates Poseidon Commitment &amp; Signs with NIST FIPS 204</p>
               </div>
             </div>
 
             {issueSuccess && (
-              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono flex items-center space-x-2">
-                <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                <span>Credential issued successfully! Poseidon commitment registered on CredentialRegistry.sol.</span>
+              <div className="p-4 rounded-2xl bg-[#f4f8eb] border-2 border-[#e27396] text-[#22121b] text-xs font-mono font-bold flex items-center space-x-2.5">
+                <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-[#e27396]" />
+                <span>Credential issued successfully! Commitment registered on CredentialRegistry.sol.</span>
               </div>
             )}
 
             <form onSubmit={handleIssueCredential} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-[#22121b] mb-1.5 font-mono uppercase">
                   Recipient Student DID
                 </label>
                 <input
@@ -187,13 +200,13 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
                   required
                   value={studentDid}
                   onChange={(e) => setStudentDid(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono focus:border-cyan-500 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#f4f8eb] border border-[#efcfe3] text-[#22121b] text-xs font-mono font-bold focus:border-[#e27396] focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-[#22121b] mb-1.5 font-mono uppercase">
                     Student Full Name
                   </label>
                   <input
@@ -201,11 +214,11 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
                     required
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f4f8eb] border border-[#efcfe3] text-[#22121b] text-xs font-bold focus:border-[#e27396] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-[#22121b] mb-1.5 font-mono uppercase">
                     Graduation Year
                   </label>
                   <input
@@ -213,14 +226,14 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
                     required
                     value={gradYear}
                     onChange={(e) => setGradYear(parseInt(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f4f8eb] border border-[#efcfe3] text-[#22121b] text-xs font-mono font-bold focus:border-[#e27396] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-[#22121b] mb-1.5 font-mono uppercase">
                     Degree Program
                   </label>
                   <input
@@ -228,12 +241,12 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
                     required
                     value={degree}
                     onChange={(e) => setDegree(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f4f8eb] border border-[#efcfe3] text-[#22121b] text-xs font-bold focus:border-[#e27396] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Cumulative CGPA (Scale 10.0)
+                  <label className="block text-xs font-bold text-[#22121b] mb-1.5 font-mono uppercase">
+                    Cumulative CGPA (10.0 Scale)
                   </label>
                   <input
                     type="number"
@@ -243,39 +256,39 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
                     required
                     value={cgpa}
                     onChange={(e) => setCgpa(parseFloat(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f4f8eb] border border-[#efcfe3] text-[#22121b] text-xs font-mono font-black focus:border-[#e27396] focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Cryptographic Preview Panel */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2 text-xs font-mono">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-bold">
-                  Real-Time Cryptographic Preview
+              {/* Cryptographic Telemetry Box */}
+              <div className="p-4 rounded-2xl bg-[#f4f8eb] border border-[#efcfe3] space-y-2 text-xs font-mono">
+                <span className="text-[10px] text-[#5a3045] uppercase tracking-widest block font-black">
+                  Live Cryptographic Hashing Telemetry
                 </span>
-                <div className="flex items-center justify-between text-slate-400">
-                  <span>Scalar Field Poseidon Commitment:</span>
-                  <span className="text-cyan-400 truncate max-w-[220px]">{previewCommitment}</span>
+                <div className="flex items-center justify-between text-[#22121b]">
+                  <span className="font-bold">Scalar Poseidon Hash:</span>
+                  <span className="text-[#e27396] font-black truncate max-w-[220px]">{previewCommitment}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-400">
-                  <span>Signer Envelope:</span>
-                  <span className="text-purple-400">NIST ML-DSA-65 (Lattice)</span>
+                <div className="flex items-center justify-between text-[#22121b]">
+                  <span className="font-bold">Signature Algorithm:</span>
+                  <span className="text-[#22121b] font-black">NIST ML-DSA-65 (Lattice Standard)</span>
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={isIssuing}
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold text-xs shadow-lg shadow-blue-500/20 flex items-center justify-center space-x-2 transition disabled:opacity-50"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#e27396] hover:bg-[#b8476d] text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-[#e27396]/25 flex items-center justify-center space-x-2 transition disabled:opacity-50"
               >
                 {isIssuing ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Signing Envelope & Anchoring to EVM...</span>
+                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    <span>Signing Envelope &amp; Anchoring to EVM...</span>
                   </>
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
+                    <Send className="w-4 h-4 text-white" />
                     <span>Issue Credential with ML-DSA Signature</span>
                   </>
                 )}
@@ -284,73 +297,73 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
           </div>
         </div>
 
-        {/* Right: Active Registry & Instant Revocation Management (5 cols) */}
+        {/* Right: Active Credential & Revocation Console (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="glass-panel rounded-2xl p-6 border border-slate-800 shadow-xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#ffffff] border-2 border-[#efcfe3] space-y-5 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-[#efcfe3]">
               <div className="flex items-center space-x-2">
-                <Layers className="w-4 h-4 text-purple-400" />
-                <h3 className="font-bold text-white text-sm">Issued Credential Status</h3>
+                <Layers className="w-4 h-4 text-[#e27396]" />
+                <h3 className="font-black text-[#22121b] text-sm">Issued Credential Record</h3>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">
-                ID: {currentCredential.credentialId}
+              <span className="text-[11px] font-mono text-[#5a3045] font-bold">
+                {currentCredential.credentialId}
               </span>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3 text-xs">
+            <div className="p-4 rounded-2xl bg-[#f4f8eb] border border-[#efcfe3] space-y-3 text-xs font-mono">
               <div className="flex justify-between">
-                <span className="text-slate-400">Recipient:</span>
-                <span className="text-slate-200 font-mono truncate max-w-[160px]">
+                <span className="text-[#5a3045] font-bold">RECIPIENT:</span>
+                <span className="text-[#22121b] font-bold truncate max-w-[160px]">
                   {currentCredential.holderDid}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Status:</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                <span className="text-[#5a3045] font-bold">STATUS:</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
                   currentCredential.status === "ACTIVE"
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "bg-rose-500/20 text-rose-300"
+                    ? "bg-[#b3dee2] text-[#22121b] border border-[#e27396]/30"
+                    : "bg-[#efcfe3] text-[#e27396] border border-[#e27396]"
                 }`}>
                   {currentCredential.status}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Revocation Handle:</span>
-                <span className="text-slate-300 font-mono text-[11px] truncate max-w-[150px]">
+                <span className="text-[#5a3045] font-bold">REVOCATION HANDLE:</span>
+                <span className="text-[#22121b] font-semibold truncate max-w-[140px]">
                   {currentCredential.revocationHandle}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">On-Chain TX:</span>
-                <span className="text-cyan-400 font-mono text-[11px] truncate max-w-[150px]">
+                <span className="text-[#5a3045] font-bold">ON-CHAIN TX:</span>
+                <span className="text-[#e27396] font-bold truncate max-w-[140px]">
                   {currentCredential.txHash}
                 </span>
               </div>
             </div>
 
-            {/* Revoke / Reinstate Trigger */}
-            <div className="p-4 rounded-xl bg-slate-950/60 border border-rose-500/20 space-y-3">
-              <div className="flex items-center space-x-2 text-rose-400 text-xs font-semibold">
-                <AlertTriangle className="w-4 h-4" />
-                <span>Sparse Merkle Tree Revocation Control</span>
+            {/* Revoke Controller */}
+            <div className="p-4 rounded-2xl bg-[#f4f8eb] border-2 border-[#efcfe3] space-y-3 font-mono text-xs">
+              <div className="flex items-center space-x-2 text-[#e27396] font-black">
+                <AlertTriangle className="w-4 h-4 text-[#e27396]" />
+                <span>Sparse Merkle Tree Revocation Accumulator</span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Updating revocation status recalculates the cryptographic accumulator root on <code className="text-slate-300">RevocationRegistry.sol</code> without revealing the student identity.
+              <p className="text-[11px] text-[#5a3045] font-sans leading-relaxed">
+                Updating status recalculates the cryptographic root on <code className="text-[#e27396] font-bold">RevocationRegistry.sol</code>. Zero-knowledge proofs generated against revoked roots will fail pairing checks.
               </p>
 
               <button
                 disabled={revoking}
                 onClick={handleToggleRevocation}
-                className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
+                className={`w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-xs ${
                   currentCredential.status === "ACTIVE"
-                    ? "bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40"
-                    : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
+                    ? "bg-[#efcfe3] hover:bg-[#ea9ab2] text-[#22121b] border border-[#e27396]"
+                    : "bg-[#e27396] hover:bg-[#b8476d] text-white"
                 }`}
               >
                 {revoking ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Updating On-Chain SMT Root...</span>
+                    <span>Recalculating SMT Root...</span>
                   </>
                 ) : (
                   <span>
