@@ -5,6 +5,9 @@ import { DIDResolver } from "./did/didResolver";
 import { VcEngine } from "./credentials/vcEngine";
 import { ZkpService } from "./zkp/zkpService";
 import { BlockchainService } from "./contracts/blockchainService";
+import { SparseMerkleTree } from "./credentials/sparseMerkleTree";
+import { IpfsAdapter } from "./storage/ipfsAdapter";
+import { Repository } from "./db/repository";
 
 dotenv.config();
 
@@ -13,9 +16,11 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 4000;
+const smt = new SparseMerkleTree();
 
 // 1. Health & Cryptographic Telemetry Endpoint
-app.get("/api/health", (_req: Request, res: Response) => {
+app.get("/api/health", async (_req: Request, res: Response) => {
+  const smtRoot = await smt.getRoot();
   res.json({
     status: "HEALTHY",
     service: "Q-Trust Privacy-Preserving & Post-Quantum Credential Gateway",
@@ -26,6 +31,8 @@ app.get("/api/health", (_req: Request, res: Response) => {
       identityStandard: "W3C DID Core 1.0 (did:qtrust:...)",
       credentialStandard: "W3C Verifiable Credentials Data Model 2.0",
       commitmentScheme: "Poseidon Algebraic Hash (32-byte off-chain root)",
+      sparseMerkleTreeRoot: smtRoot,
+      storageEncryption: "AES-256-GCM (Client-Side Encrypted IPFS)",
     },
     blockchain: {
       network: "Ethereum Sepolia / Polygon Amoy",
@@ -74,6 +81,9 @@ app.post("/api/credentials/issue", async (req: Request, res: Response) => {
       institutionId
     );
 
+    // Save to repository
+    Repository.saveCredential(credentialEnvelope);
+
     return res.status(201).json({
       success: true,
       message: "Academic degree credential successfully issued and signed with NIST FIPS 204 ML-DSA-65.",
@@ -92,7 +102,33 @@ app.post("/api/credentials/issue", async (req: Request, res: Response) => {
   }
 });
 
-// 4. Zero-Knowledge Proof Generation Endpoint (Scholar Vault Prover)
+// 4. Credential Revocation Endpoint (University Registrar)
+app.post("/api/credentials/revoke", async (req: Request, res: Response) => {
+  try {
+    const { commitmentHex, reason = "Degree conferral superseded or revoked" } = req.body;
+    if (!commitmentHex) {
+      return res.status(400).json({ success: false, error: "Missing commitmentHex" });
+    }
+
+    const newSmtRoot = await smt.revoke(commitmentHex);
+    Repository.revokeCredential(commitmentHex, reason);
+
+    return res.json({
+      success: true,
+      message: "Credential revoked. Sparse Merkle Tree non-revocation root updated.",
+      commitmentHex,
+      newSmtRoot,
+      revocationTimestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Failed to revoke credential",
+    });
+  }
+});
+
+// 5. Zero-Knowledge Proof Generation Endpoint (Scholar Vault Prover)
 app.post("/api/proofs/generate", async (req: Request, res: Response) => {
   try {
     const {
@@ -139,7 +175,7 @@ app.post("/api/proofs/generate", async (req: Request, res: Response) => {
   }
 });
 
-// 5. 6-Stage Cryptographic Audit Verification Endpoint (Corporate Verifier)
+// 6. 6-Stage Cryptographic Audit Verification Endpoint (Corporate Verifier)
 app.post("/api/proofs/verify", async (req: Request, res: Response) => {
   try {
     const {
@@ -158,6 +194,9 @@ app.post("/api/proofs/verify", async (req: Request, res: Response) => {
       thresholdCgpa
     );
 
+    // Save audit receipt
+    Repository.saveAuditReceipt(auditReport);
+
     return res.json({
       success: auditReport.overallPassed,
       auditReport,
@@ -170,7 +209,34 @@ app.post("/api/proofs/verify", async (req: Request, res: Response) => {
   }
 });
 
-// 6. On-Chain Ledger & Contract Telemetry Endpoints
+// 7. IPFS Encrypted Storage Endpoints
+app.post("/api/storage/encrypt-pin", (req: Request, res: Response) => {
+  try {
+    const { payload, encryptionKeyHex = "0x98f411ba7823e410a0123456789abcdef" } = req.body;
+    if (!payload) {
+      return res.status(400).json({ success: false, error: "Missing payload" });
+    }
+    const encrypted = IpfsAdapter.encryptAndPin(payload, encryptionKeyHex);
+    return res.json({ success: true, encrypted });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/storage/decrypt", (req: Request, res: Response) => {
+  try {
+    const { encryptedPayload, encryptionKeyHex = "0x98f411ba7823e410a0123456789abcdef" } = req.body;
+    if (!encryptedPayload) {
+      return res.status(400).json({ success: false, error: "Missing encryptedPayload" });
+    }
+    const decrypted = IpfsAdapter.decrypt(encryptedPayload, encryptionKeyHex);
+    return res.json({ success: true, decrypted });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 8. On-Chain Ledger & Contract Telemetry Endpoints
 app.get("/api/ledger/contracts", (_req: Request, res: Response) => {
   res.json({
     contracts: BlockchainService.getDeployedAddresses(),
@@ -181,6 +247,16 @@ app.get("/api/ledger/transactions", (_req: Request, res: Response) => {
   res.json({
     transactions: BlockchainService.getRecentTransactions(),
   });
+});
+
+// 9. Audit Receipt Lookup Endpoint
+app.get("/api/audit/receipt/:receiptId", (req: Request, res: Response) => {
+  const receiptId = Array.isArray(req.params.receiptId) ? req.params.receiptId[0] : req.params.receiptId;
+  const receipt = Repository.getAuditReceipt(receiptId);
+  if (!receipt) {
+    return res.status(404).json({ success: false, error: "Audit receipt not found" });
+  }
+  return res.json({ success: true, receipt });
 });
 
 if (process.env.NODE_ENV !== "test") {

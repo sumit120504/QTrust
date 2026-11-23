@@ -126,6 +126,7 @@ async function runTests() {
   console.log("\n============================================================");
   console.log("ALL BACKEND & W3C INTEGRATION TESTS PASSED (6/6)");
   console.log("============================================================\n");
+  process.exit(0);
 }
 
 runTests().catch((err) => {

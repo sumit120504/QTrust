@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CredentialClaims, CredentialEnvelope, BlockchainTransaction } from "@/types";
 import { simulatePoseidonCommitment, simulateMLDSASign } from "@/lib/cryptoSim";
 import { ISSUER_DID, CONTRACT_ADDRESSES } from "@/lib/mockData";
+import { ApiClient } from "@/lib/apiClient";
 import { 
   Building2, ShieldCheck, PlusCircle, AlertTriangle, CheckCircle2, 
   Cpu, FileCheck, Layers, RefreshCw, Send, ArrowUpRight, Lock, 
-  Database, Shield, Terminal, Hash, BookOpen
+  Database, Shield, Terminal, Hash, BookOpen, Radio
 } from "lucide-react";
 
 interface IssuerPortalProps {
@@ -30,6 +31,13 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
   const [isIssuing, setIsIssuing] = useState<boolean>(false);
   const [issueSuccess, setIssueSuccess] = useState<boolean>(false);
   const [revoking, setRevoking] = useState<boolean>(false);
+  const [isBackendLive, setIsBackendLive] = useState<boolean>(false);
+
+  useEffect(() => {
+    ApiClient.checkHealth().then((health) => {
+      setIsBackendLive(!!health);
+    });
+  }, []);
 
   // Live calculation of preview commitment
   const previewCommitment = simulatePoseidonCommitment(
@@ -44,66 +52,124 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
     setIsIssuing(true);
     setIssueSuccess(false);
 
-    await new Promise((r) => setTimeout(r, 800));
+    try {
+      // 1. Attempt live issuance through Phase 4 Backend Gateway
+      const backendRes = await ApiClient.issueCredential({
+        universityDid: ISSUER_DID,
+        universityName: "UEM Jaipur (University of Engineering & Management)",
+        studentDid: studentDid,
+        claims: {
+          degree,
+          graduationYear: gradYear,
+          actualCgpaScaled: Math.round(cgpa * 100),
+          rollNumber: "UEMJ/2023/BTECH/CSE/042",
+        },
+        studentSecret: "123456789012345678901234567890",
+        credentialSalt: "555554444433333222221111100000",
+        institutionId: "101",
+      });
 
-    const pCommitment = simulatePoseidonCommitment(
-      "0x98f411ba7823e410a",
-      Math.round(cgpa * 100),
-      gradYear,
-      "0x89d2c20a9bf5186b2de581fefc39d4b0d0671bbd3c19e532b217e29cf9761a29"
-    );
+      let pCommitment: string;
+      let mlDsa: any;
+      let credId: string;
+      let txHash: string;
+      let blockNum: number;
+      let ipfsCid: string;
+      let revHandle: string;
 
-    const mlDsa = simulateMLDSASign(pCommitment, ISSUER_DID);
+      if (backendRes && backendRes.success && backendRes.credential) {
+        setIsBackendLive(true);
+        const cred = backendRes.credential;
+        pCommitment = cred.credentialCommitment.hex;
+        mlDsa = {
+          signatureHex: cred.proof.signatureHex.slice(0, 48) + "... (3,309 bytes NIST ML-DSA)",
+          algorithm: "ML-DSA-65" as const,
+          fipsStandard: "FIPS-204" as const,
+          publicKeyHash: cred.proof.issuerFingerprint,
+        };
+        credId = cred.id.replace("urn:uuid:", "");
+        txHash = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+        blockNum = 4892000 + Math.floor(Math.random() * 500);
+        ipfsCid = cred.evidence?.[0]?.encryptedPayloadCid || `ipfs://bafybeiqtrust${txHash.slice(2, 38)}`;
+        revHandle = cred.credentialStatus?.revocationHandle || ("0x77c2" + txHash.slice(6, 40));
+      } else {
+        // Fallback to local simulation
+        await new Promise((r) => setTimeout(r, 600));
+        pCommitment = simulatePoseidonCommitment(
+          "0x98f411ba7823e410a",
+          Math.round(cgpa * 100),
+          gradYear,
+          "0x89d2c20a9bf5186b2de581fefc39d4b0d0671bbd3c19e532b217e29cf9761a29"
+        );
+        mlDsa = simulateMLDSASign(pCommitment, ISSUER_DID);
+        credId = `QT-${gradYear}-UEM-${Math.floor(1000 + Math.random() * 9000)}`;
+        txHash = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+        blockNum = 4892000 + Math.floor(Math.random() * 500);
+        ipfsCid = `ipfs://Qm${txHash.slice(2, 46)}`;
+        revHandle = "0x77c2" + txHash.slice(6, 40);
+      }
 
-    const credId = `QT-${gradYear}-UEM-${Math.floor(1000 + Math.random() * 9000)}`;
-    const txHash = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-    const blockNum = 4892000 + Math.floor(Math.random() * 500);
-
-    const newEnvelope: CredentialEnvelope = {
-      credentialId: credId,
-      issuerDid: ISSUER_DID,
-      issuerName: "UEM Jaipur (University of Engineering & Management)",
-      holderDid: studentDid,
-      schemaHash: "0x89d2c20a9bf5186b2de581fefc39d4b0d0671bbd3c19e532b217e29cf9761a29",
-      credentialCommitment: pCommitment,
-      validityPeriod: {
-        validFrom: `${gradYear}-06-01T00:00:00Z`,
-      },
-      revocationHandle: "0x77c2" + txHash.slice(6, 40),
-      mlDsaSignature: mlDsa,
-      encryptedPayloadCid: `ipfs://Qm${txHash.slice(2, 46)}`,
-      txHash,
-      blockNumber: blockNum,
-      status: "ACTIVE",
-    };
-
-    const newTx: BlockchainTransaction = {
-      id: "tx-" + Date.now(),
-      txHash,
-      blockNumber: blockNum,
-      timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
-      contract: "CredentialRegistry",
-      event: "CredentialIssued",
-      data: {
+      const newEnvelope: CredentialEnvelope = {
         credentialId: credId,
-        commitment: pCommitment,
-        issuerId: "0xuem_jaipur",
-        holderDid: studentDid.slice(0, 20) + "...",
-      },
-      status: "CONFIRMED",
-    };
+        issuerDid: ISSUER_DID,
+        issuerName: "UEM Jaipur (University of Engineering & Management)",
+        holderDid: studentDid,
+        schemaHash: "0x89d2c20a9bf5186b2de581fefc39d4b0d0671bbd3c19e532b217e29cf9761a29",
+        credentialCommitment: pCommitment,
+        validityPeriod: {
+          validFrom: `${gradYear}-06-01T00:00:00Z`,
+        },
+        revocationHandle: revHandle,
+        mlDsaSignature: mlDsa,
+        encryptedPayloadCid: ipfsCid,
+        txHash,
+        blockNumber: blockNum,
+        status: "ACTIVE",
+      };
 
-    onCredentialIssued(newEnvelope, newTx);
-    setIsIssuing(false);
-    setIssueSuccess(true);
-    setTimeout(() => setIssueSuccess(false), 5000);
+      const newTx: BlockchainTransaction = {
+        id: "tx-" + Date.now(),
+        txHash,
+        blockNumber: blockNum,
+        timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+        contract: "CredentialRegistry",
+        event: "CredentialIssued",
+        data: {
+          credentialId: credId,
+          commitment: pCommitment,
+          issuerId: "0xuem_jaipur",
+          holderDid: studentDid.slice(0, 20) + "...",
+        },
+        status: "CONFIRMED",
+      };
+
+      onCredentialIssued(newEnvelope, newTx);
+      setIsIssuing(false);
+      setIssueSuccess(true);
+      setTimeout(() => setIssueSuccess(false), 5000);
+    } catch {
+      setIsIssuing(false);
+    }
   };
 
   const handleToggleRevocation = async () => {
     setRevoking(true);
+    const isCurrentlyActive = currentCredential.status === "ACTIVE";
+
+    try {
+      // Update Sparse Merkle Tree non-revocation root via Backend Gateway
+      if (isCurrentlyActive) {
+        await ApiClient.revokeCredential(
+          currentCredential.credentialCommitment,
+          "Degree conferral revoked or credential expired"
+        );
+      }
+    } catch {
+      // Continue with UI state update
+    }
+
     await new Promise((r) => setTimeout(r, 600));
 
-    const isCurrentlyActive = currentCredential.status === "ACTIVE";
     const txHash = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
     const blockNum = 4892100 + Math.floor(Math.random() * 100);
 
@@ -146,8 +212,13 @@ export const IssuerPortal: React.FC<IssuerPortalProps> = ({
           </div>
 
           <div className="flex items-center space-x-3 font-mono">
-            <div className="p-4 rounded-2xl bg-[#f4f8eb] border border-[#efcfe3] text-left">
-              <span className="text-[10px] text-[#5a3045] uppercase tracking-widest block font-bold">ACTIVE SIGNER KEY</span>
+            <div className={`p-4 rounded-2xl border text-left ${isBackendLive ? "bg-[#f4f8eb] border-[#b3dee2]" : "bg-[#efcfe3]/30 border-[#ea9ab2]"}`}>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${isBackendLive ? "bg-emerald-500 animate-pulse" : "bg-[#ea9ab2]"}`} />
+                <span className="text-[10px] text-[#5a3045] uppercase tracking-widest block font-bold">
+                  {isBackendLive ? "BACKEND GATEWAY (PORT 4000)" : "LOCAL CRYPTO SIMULATION"}
+                </span>
+              </div>
               <span className="text-sm font-black text-[#e27396] flex items-center gap-1.5 mt-0.5">
                 <Cpu className="w-4 h-4 text-[#e27396]" /> NIST ML-DSA-65 (v1)
               </span>

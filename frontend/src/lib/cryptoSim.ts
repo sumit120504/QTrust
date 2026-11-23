@@ -127,6 +127,7 @@ export interface VerificationReport {
   checks: VerificationCheckStep[];
   predicateSummary: string;
   privacyGuarantee: string;
+  receiptId?: string;
 }
 
 export async function verifyPresentation(

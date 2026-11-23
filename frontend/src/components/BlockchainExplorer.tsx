@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BlockchainTransaction } from "@/types";
 import { CONTRACT_ADDRESSES } from "@/lib/mockData";
-import { Database, CheckCircle2 } from "lucide-react";
+import { ApiClient } from "@/lib/apiClient";
+import { Database, CheckCircle2, ShieldCheck, Cpu } from "lucide-react";
 
 interface BlockchainExplorerProps {
   transactions: BlockchainTransaction[];
@@ -12,8 +13,33 @@ interface BlockchainExplorerProps {
 export const BlockchainExplorer: React.FC<BlockchainExplorerProps> = ({ transactions }) => {
   const [filterContract, setFilterContract] = useState<string>("ALL");
   const [, setSelectedTx] = useState<BlockchainTransaction | null>(null);
+  const [contractAddrs, setContractAddrs] = useState<Record<string, string>>(CONTRACT_ADDRESSES);
+  const [liveTxs, setLiveTxs] = useState<BlockchainTransaction[]>([]);
+  const [isBackendLive, setIsBackendLive] = useState<boolean>(false);
 
-  const filtered = transactions.filter((t) => 
+  useEffect(() => {
+    ApiClient.getContracts().then((contracts) => {
+      if (contracts) {
+        setContractAddrs((prev) => ({ ...prev, ...contracts }));
+        setIsBackendLive(true);
+      }
+    });
+    ApiClient.getTransactions().then((txs) => {
+      if (txs && Array.isArray(txs)) {
+        setLiveTxs(txs);
+      }
+    });
+  }, []);
+
+  // Merge live and passed transactions deduplicated
+  const allTxMap = new Map<string, BlockchainTransaction>();
+  for (const t of transactions) allTxMap.set(t.id || t.txHash, t);
+  for (const t of liveTxs) allTxMap.set(t.id || t.txHash, t);
+  const mergedTransactions = Array.from(allTxMap.values()).sort(
+    (a, b) => b.blockNumber - a.blockNumber
+  );
+
+  const filtered = mergedTransactions.filter((t) => 
     filterContract === "ALL" ? true : t.contract === filterContract
   );
 
@@ -38,14 +64,14 @@ export const BlockchainExplorer: React.FC<BlockchainExplorerProps> = ({ transact
       </div>
 
       {/* Contract Registry Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 font-mono text-xs">
         <div className="p-4 rounded-2xl bg-[#ffffff] border-2 border-[#ea9ab2] space-y-2 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="font-black text-[#22121b]">IssuerRegistry.sol</span>
             <span className="text-[10px] px-2 py-0.5 rounded font-black bg-[#efcfe3] text-[#22121b]">v1.2</span>
           </div>
-          <p className="text-[11px] text-[#e27396] font-bold truncate">{CONTRACT_ADDRESSES.IssuerRegistry}</p>
-          <span className="text-[10px] text-[#5a3045] block font-sans font-medium">Authorizes university public key fingerprints</span>
+          <p className="text-[11px] text-[#e27396] font-bold truncate">{contractAddrs.IssuerRegistry || CONTRACT_ADDRESSES.IssuerRegistry}</p>
+          <span className="text-[10px] text-[#5a3045] block font-sans font-medium">Authorizes university ML-DSA fingerprints</span>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#ffffff] border-2 border-[#ea9ab2] space-y-2 shadow-sm">
@@ -53,7 +79,7 @@ export const BlockchainExplorer: React.FC<BlockchainExplorerProps> = ({ transact
             <span className="font-black text-[#22121b]">CredentialRegistry.sol</span>
             <span className="text-[10px] px-2 py-0.5 rounded font-black bg-[#efcfe3] text-[#22121b]">v2.0</span>
           </div>
-          <p className="text-[11px] text-[#e27396] font-bold truncate">{CONTRACT_ADDRESSES.CredentialRegistry}</p>
+          <p className="text-[11px] text-[#e27396] font-bold truncate">{contractAddrs.CredentialRegistry || CONTRACT_ADDRESSES.CredentialRegistry}</p>
           <span className="text-[10px] text-[#5a3045] block font-sans font-medium">Anchors Poseidon credential commitments</span>
         </div>
 
@@ -62,8 +88,17 @@ export const BlockchainExplorer: React.FC<BlockchainExplorerProps> = ({ transact
             <span className="font-black text-[#22121b]">RevocationRegistry.sol</span>
             <span className="text-[10px] px-2 py-0.5 rounded font-black bg-[#efcfe3] text-[#22121b]">SMT-Root</span>
           </div>
-          <p className="text-[11px] text-[#e27396] font-bold truncate">{CONTRACT_ADDRESSES.RevocationRegistry}</p>
+          <p className="text-[11px] text-[#e27396] font-bold truncate">{contractAddrs.RevocationRegistry || CONTRACT_ADDRESSES.RevocationRegistry}</p>
           <span className="text-[10px] text-[#5a3045] block font-sans font-medium">Sparse Merkle Tree non-revocation roots</span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#ffffff] border-2 border-[#ea9ab2] space-y-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-black text-[#22121b]">QTrustAnchor.sol</span>
+            <span className="text-[10px] px-2 py-0.5 rounded font-black bg-[#b3dee2] text-[#22121b]">Master</span>
+          </div>
+          <p className="text-[11px] text-[#e27396] font-bold truncate">{contractAddrs.QTrustAnchor || "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"}</p>
+          <span className="text-[10px] text-[#5a3045] block font-sans font-medium">Atomic verifier coordinator & audit ledger</span>
         </div>
       </div>
 

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ZKProofPayload, CredentialEnvelope } from "@/types";
 import { verifyPresentation, VerificationReport } from "@/lib/cryptoSim";
+import { ApiClient } from "@/lib/apiClient";
 import { 
   CheckCircle2, XCircle, ShieldCheck, Lock, EyeOff, Check, 
-  Copy, RefreshCw, FileText, Terminal, AlertTriangle
+  Copy, RefreshCw, FileText, Terminal, AlertTriangle, Shield
 } from "lucide-react";
 
 interface VerifierPortalProps {
@@ -22,21 +23,67 @@ export const VerifierPortal: React.FC<VerifierPortalProps> = ({
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [report, setReport] = useState<VerificationReport | null>(null);
   const [copiedAudit, setCopiedAudit] = useState<boolean>(false);
+  const [isBackendLive, setIsBackendLive] = useState<boolean>(false);
+
+  useEffect(() => {
+    ApiClient.checkHealth().then((health) => {
+      setIsBackendLive(!!health);
+    });
+  }, []);
 
   const handleVerify = async () => {
     if (!currentProof) return;
     setIsVerifying(true);
     setReport(null);
 
-    const res = await verifyPresentation(currentProof, credentialEnvelope);
-    setReport(res);
-    setIsVerifying(false);
+    try {
+      // 1. Attempt verification via Phase 4 Cryptographic Audit Gateway
+      const liveAuditRes = await ApiClient.verifyProof({
+        verifierName: "ABC Technologies (Enterprise HR Compliance)",
+        proof: currentProof.proof,
+        publicSignals: [
+          currentProof.publicSignals.credentialCommitment,
+          currentProof.publicSignals.thresholdCgpa.toString(),
+        ],
+        credentialEnvelope,
+        thresholdCgpa: currentProof.publicSignals.thresholdCgpa,
+      });
+
+      if (liveAuditRes && liveAuditRes.success && liveAuditRes.auditReport) {
+        setIsBackendLive(true);
+        const rep = liveAuditRes.auditReport;
+        setReport({
+          overallPassed: rep.overallPassed,
+          totalLatencyMs: rep.totalLatencyMs,
+          checks: rep.checks.map((chk: any) => ({
+            name: chk.name,
+            category: "DID",
+            passed: chk.passed,
+            details: chk.details,
+            latencyMs: chk.latencyMs,
+          })),
+          predicateSummary: rep.predicateSummary,
+          privacyGuarantee: rep.privacyGuarantee,
+          receiptId: rep.receiptId,
+        });
+      } else {
+        // Fallback to local cryptographic simulation
+        const res = await verifyPresentation(currentProof, credentialEnvelope);
+        setReport(res);
+      }
+    } catch {
+      const res = await verifyPresentation(currentProof, credentialEnvelope);
+      setReport(res);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleCopyAuditReceipt = () => {
     if (!report) return;
     const receipt = {
       auditTimestamp: new Date().toISOString(),
+      receiptId: report.receiptId || "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
       verifierId: "ABC Technologies (Enterprise HR Compliance)",
       overallStatus: report.overallPassed ? "PASSED" : "FAILED",
       totalLatencyMs: report.totalLatencyMs,
@@ -68,8 +115,13 @@ export const VerifierPortal: React.FC<VerifierPortalProps> = ({
           </div>
 
           <div className="flex items-center space-x-3 font-mono">
-            <div className="p-4 rounded-2xl bg-[#efcfe3]/40 border border-[#ea9ab2] text-left">
-              <span className="text-[10px] text-[#5a3045] uppercase tracking-widest block font-bold">AUDITOR ENTITY</span>
+            <div className={`p-4 rounded-2xl border text-left ${isBackendLive ? "bg-[#f4f8eb] border-[#b3dee2]" : "bg-[#efcfe3]/40 border-[#ea9ab2]"}`}>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${isBackendLive ? "bg-emerald-500 animate-pulse" : "bg-[#ea9ab2]"}`} />
+                <span className="text-[10px] text-[#5a3045] uppercase tracking-widest block font-bold">
+                  {isBackendLive ? "VERIFICATION GATEWAY (PORT 4000)" : "LOCAL AUDIT ENGINE"}
+                </span>
+              </div>
               <span className="text-sm font-black text-[#22121b] flex items-center gap-1.5 mt-0.5">
                 <CheckCircle2 className="w-4 h-4 text-[#e27396]" /> ABC Technologies
               </span>
@@ -270,6 +322,13 @@ export const VerifierPortal: React.FC<VerifierPortalProps> = ({
                     <p className="text-xs text-[#22121b] leading-relaxed font-sans font-medium">
                       <strong className="text-[#e27396] font-black font-mono">Privacy Guarantee:</strong> {report.privacyGuarantee}
                     </p>
+
+                    {report.receiptId && (
+                      <div className="p-2.5 rounded-xl bg-[#ffffff] border border-[#ea9ab2] text-[11px] font-mono text-[#5a3045] truncate">
+                        <span className="text-[#22121b] font-bold">ON-CHAIN AUDIT RECEIPT:</span>{" "}
+                        <span className="text-[#e27396] font-bold">{report.receiptId}</span>
+                      </div>
+                    )}
 
                     <div className="pt-2 flex justify-end">
                       <button

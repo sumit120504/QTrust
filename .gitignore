@@ -81,7 +81,11 @@ ENV/
 .coverage
 htmlcov/
 
-# Logs & Temporary Files
+# Backend Build & Runtime Data
+backend/dist/
+backend/data/*.json
+!backend/data/.gitkeep
+
 logs/
 *.log
 *.tmp

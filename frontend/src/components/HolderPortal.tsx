@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CredentialClaims, CredentialEnvelope, ZKProofPayload, DIDDocument } from "@/types";
 import { simulateGroth16Proof } from "@/lib/cryptoSim";
+import { ApiClient } from "@/lib/apiClient";
 import { 
   Key, ShieldCheck, Eye, EyeOff, Lock, Sparkles, CheckCircle2, 
   Copy, ArrowRight, ExternalLink, RefreshCw, FileCode, Award, 
@@ -33,6 +34,17 @@ export const HolderPortal: React.FC<HolderPortalProps> = ({
   const [showDidDoc, setShowDidDoc] = useState<boolean>(false);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [copiedText, setCopiedText] = useState<string>("");
+  const [isBackendLive, setIsBackendLive] = useState<boolean>(false);
+  const [liveDidDoc, setLiveDidDoc] = useState<any>(null);
+
+  useEffect(() => {
+    ApiClient.checkHealth().then((health) => {
+      setIsBackendLive(!!health);
+    });
+    ApiClient.resolveDid(credential.holderDid).then((doc) => {
+      if (doc?.didDocument) setLiveDidDoc(doc.didDocument);
+    });
+  }, [credential.holderDid]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -43,7 +55,61 @@ export const HolderPortal: React.FC<HolderPortalProps> = ({
   const handleGenerateProof = async () => {
     setIsProving(true);
     setGeneratedProof(null);
+    setProvingStep("Connecting to Phase 4 Groth16 Prover via Gateway...");
+
     try {
+      const actualCgpaScaled = Math.round(claims.cgpa * 100);
+      const thresholdCgpaScaled = Math.round(threshold * 100);
+
+      const liveProofRes = await ApiClient.generateProof({
+        studentSecret: "123456789012345678901234567890",
+        identityCommitment: credential.credentialCommitment,
+        actualCgpaScaled,
+        graduationYear: claims.graduationYear,
+        institutionId: "101",
+        credentialSalt: "555554444433333222221111100000",
+        thresholdCgpaScaled,
+      });
+
+      if (liveProofRes && liveProofRes.success && liveProofRes.proof) {
+        setIsBackendLive(true);
+        setProvingStep(`Synthesized Circom 2.2 Proof in ${liveProofRes.provingDurationMs}ms (Groth16 / BN254)`);
+
+        const proofPayload: ZKProofPayload = {
+          circuitId: "cgpa_threshold.circom (Groth16 BN254)",
+          provingSystem: "Groth16",
+          proof: liveProofRes.proof,
+          publicSignals: {
+            credentialCommitment: credential.credentialCommitment,
+            thresholdCgpa: thresholdCgpaScaled,
+            revocationRoot: "0x" + BigInt(liveProofRes.publicSignals[0] || "0").toString(16).padStart(64, "0"),
+            verifierChallenge: "0x" + Math.random().toString(16).substring(2, 18).padEnd(32, "0"),
+            isSatisfied: true,
+          },
+          provenPredicates: {
+            cgpaThresholdMet: true,
+            claimedThreshold: threshold,
+            nonRevokedProofVerified: true,
+            identityBound: true,
+          },
+          revealedClaims: {
+            degree: claims.degree,
+            graduationYear: claims.graduationYear,
+          },
+        };
+        setGeneratedProof(proofPayload);
+      } else {
+        // Fallback to local simulation
+        const proof = await simulateGroth16Proof(
+          claims,
+          threshold,
+          credential.credentialCommitment,
+          "0x98f411ba7823e410a",
+          (step) => setProvingStep(step)
+        );
+        setGeneratedProof(proof);
+      }
+    } catch {
       const proof = await simulateGroth16Proof(
         claims,
         threshold,
@@ -76,6 +142,11 @@ export const HolderPortal: React.FC<HolderPortalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <div className={`px-3 py-1.5 rounded-xl border text-[11px] font-mono flex items-center gap-1.5 ${isBackendLive ? "bg-[#f4f8eb] border-[#b3dee2]" : "bg-[#efcfe3]/30 border-[#ea9ab2]"}`}>
+              <span className={`w-2 h-2 rounded-full ${isBackendLive ? "bg-emerald-500 animate-pulse" : "bg-[#ea9ab2]"}`} />
+              <span className="font-bold text-[#5a3045]">{isBackendLive ? "Groth16 Gateway (Port 4000)" : "Local Prover"}</span>
+            </div>
+
             <button
               onClick={() => setShowDidDoc(!showDidDoc)}
               className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-[#f4f8eb] hover:bg-[#efcfe3] text-[#22121b] text-xs font-mono font-bold border border-[#efcfe3] transition shadow-xs"
@@ -115,12 +186,12 @@ export const HolderPortal: React.FC<HolderPortalProps> = ({
         <div className="rounded-2xl bg-[#ffffff] border-2 border-[#efcfe3] p-5 font-mono text-xs animate-in fade-in duration-200 shadow-md">
           <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#efcfe3]">
             <span className="text-[#e27396] font-black flex items-center gap-2">
-              <FileCode className="w-4 h-4 text-[#e27396]" /> W3C DID Core 2.0 Document
+              <FileCode className="w-4 h-4 text-[#e27396]" /> W3C DID Core 1.0 Document {liveDidDoc ? "(Resolved Live)" : ""}
             </span>
-            <span className="text-[10px] text-[#5a3045] font-bold">Multikey ED25519 · Controller-Bound</span>
+            <span className="text-[10px] text-[#5a3045] font-bold">Separated Purposes · Assertion & KeyAgreement</span>
           </div>
           <pre className="text-[#22121b] overflow-x-auto p-3.5 bg-[#f4f8eb] rounded-xl border border-[#efcfe3] font-bold">
-            {JSON.stringify(didDoc, null, 2)}
+            {JSON.stringify(liveDidDoc || didDoc, null, 2)}
           </pre>
         </div>
       )}
