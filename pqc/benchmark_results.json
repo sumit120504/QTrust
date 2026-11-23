@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-11-20T10:21:08Z",
+  "iterations": 100,
+  "benchmarks": [
+    {
+      "algorithm": "Classical ECDSA (secp256k1)",
+      "type": "Elliptic Curve Discrete Logarithm (ECDLP)",
+      "securityCategory": "Classical 128-bit",
+      "quantumResistant": false,
+      "shorVulnerability": "Broken in polynomial time O((log N)^3) by Shor's Algorithm",
+      "publicKeySizeBytes": 64,
+      "signatureSizeBytes": 71,
+      "keygenTimeMs": 0.738,
+      "signTimeMs": 0.744,
+      "verifyTimeMs": 0.68,
+      "gasEstimateEVM": "~3,000 gas (ecrecover precompile 0x01)"
+    },
+    {
+      "algorithm": "ML-DSA-65 (NIST FIPS 204)",
+      "type": "Module-Lattice (M-LWE / M-SIS Hardness)",
+      "securityCategory": "NIST Category 3 (192-bit Quantum)",
+      "quantumResistant": true,
+      "shorVulnerability": "Immune (Lattice problems have no known quantum polynomial-time solution)",
+      "publicKeySizeBytes": 1952,
+      "signatureSizeBytes": 3309,
+      "keygenTimeMs": 0.038,
+      "signTimeMs": 0.056,
+      "verifyTimeMs": 0.034,
+      "gasEstimateEVM": "Off-Chain Verified (Anchors 32-byte Poseidon Root on EVM)"
+    }
+  ],
+  "architecturalTradeoffSummary": "While ML-DSA-65 signatures are ~46x larger than ECDSA (3,309 B vs 71 B), ML-DSA verification executes at sub-millisecond speeds. Q-Trust mitigates on-chain calldata gas costs through a two-layer trust model: smart contracts anchor a 32-byte Poseidon commitment, while client verifiers validate the 3.3 KB ML-DSA signature envelope off-chain."
+}

@@ -1,1 +1,88 @@
+# ==============================================================================
+# Q-Trust Monorepo .gitignore
+# Covers Frontend (Next.js), Circuits (Circom/snarkjs), Contracts (Hardhat),
+# PQC Engine (Python), and Backend (Node.js/TypeScript)
+# ==============================================================================
+
+# Agent and Workspace Metadata
 .agents
+.gemini
+
+# Operating System & Editor Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.cert
+secrets.json
+
+# Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js Build Output (Frontend)
+frontend/.next/
+frontend/out/
+.next/
+out/
+build/
+dist/
+
+# Hardhat & Solidity Artifacts (Contracts)
+contracts/cache/
+contracts/artifacts/
+contracts/typechain/
+contracts/typechain-types/
+cache/
+artifacts/
+typechain/
+typechain-types/
+coverage/
+coverage.json
+*.lcov
+
+# Zero-Knowledge Circuit Large Ceremony Files & Binaries (Circuits)
+circuits/bin/
+circuits/build/*.ptau
+circuits/build/*.sym
+circuits/build/*.r1cs
+# Note: Keep circuits/build/cgpa_threshold_final.zkey, verification_key.json, and Groth16Verifier.sol if desired, or build on demand.
+
+# Python Artifacts & Virtual Environments (PQC Engine)
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & Temporary Files
+logs/
+*.log
+*.tmp
+temp/
